@@ -42,7 +42,7 @@ var _ = Describe("Parsing config.Application", func() {
 			Expect(app.API()).To(Equal(config.API{
 				Port:       8123,
 				PathPrefix: "/v1",
-			}))
+			}.WithDefaultInfo()))
 
 			connStr := config.ConnectionString(app.DB())
 			Expect(connStr).To(Equal("unknown"))
@@ -84,7 +84,7 @@ sslmode = "disable"
 			err := toml.Unmarshal(tomlData, &app)
 			Expect(err).To(BeNil())
 
-			Expect(app.Info()).To(Equal(config.Info{
+			expectedInfo := config.Info{
 				Name: "agora",
 				Version: config.SemanticVersion{
 					Major: 1,
@@ -92,7 +92,9 @@ sslmode = "disable"
 					Patch: 3,
 				},
 				Env: config.QualityAssurance,
-			}))
+			}
+
+			Expect(app.Info()).To(Equal(expectedInfo))
 
 			Expect(app.Logging()).To(Equal(config.Logging{
 				Level:       "trace",
@@ -108,7 +110,7 @@ sslmode = "disable"
 			Expect(app.API()).To(Equal(config.API{
 				Port:       9123,
 				PathPrefix: "/prefix",
-			}))
+			}.WithInfo(expectedInfo)))
 
 			connStr := config.ConnectionString(app.DB())
 			expectedConnStr := "user=test password=test host=localhost port=6000 dbname=test sslmode=disable"

@@ -16,7 +16,7 @@ var _ = Describe("Watcher", func() {
 		cw       watcher.ConfigWatcher
 	)
 
-	JustBeforeEach(func() {
+	BeforeEach(func() {
 		if err := writeDataToFile(filePath, []byte{}); err != nil {
 			panic(err)
 		}
@@ -137,5 +137,5 @@ func writeDataToFile(filePath string, data []byte) error {
 		return err
 	}
 
-	return nil
+	return file.Close()
 }

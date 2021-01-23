@@ -4,3 +4,4 @@
 !*.go
 !/types
 !/modules
+!/testutil

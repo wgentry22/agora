@@ -72,6 +72,15 @@ func ConnectionString(config DB) string {
 	return connectionStringer.ConnectionString()
 }
 
+func DriverName(config DB) string {
+	var driver string
+	switch config.vendor {
+	case VendorPostgres:
+		driver = "pgx"
+	}
+	return driver
+}
+
 type postgreConnectionStringer struct {
 	User     string
 	Password string
