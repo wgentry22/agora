@@ -32,7 +32,7 @@ func (a Application) Info() Info {
 }
 
 func (a Application) API() API {
-	return a.api
+	return a.api.withInfo(a.info)
 }
 
 func (a Application) DB() DB {
@@ -161,6 +161,7 @@ func (i Info) fields() map[string]interface{} {
 type API struct {
 	Port       int    `json:"port" yaml:"port" toml:"port"`
 	PathPrefix string `json:"pathPrefix" yaml:"pathPrefix" toml:"pathPrefix"`
+	info       *Info  `toml:"-"`
 }
 
 func defaultAPIServer() API {
@@ -168,6 +169,26 @@ func defaultAPIServer() API {
 		Port:       defaultAPIPort,
 		PathPrefix: defaultAPIPathPrefix,
 	}
+}
+
+func (a API) ListenAddr() string {
+	return fmt.Sprintf(":%d", a.Port)
+}
+
+func (a API) withInfo(info Info) API {
+	return API{
+		Port:       a.Port,
+		PathPrefix: a.PathPrefix,
+		info:       &info,
+	}
+}
+
+func (a API) Info() Info {
+	if a.info == nil {
+		return defaultInfo()
+	}
+
+	return *a.info
 }
 
 func (a *API) UnmarshalTOML(data interface{}) error {
