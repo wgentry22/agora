@@ -13,7 +13,7 @@ var (
 type Configuration func(*Options)
 
 func ConfigPath(configPath string) Configuration {
-	if configPath != "." || !strings.HasPrefix(configPath, "/") {
+	if !strings.HasPrefix(configPath, "/") && configPath != "." {
 		panic(ErrConfigPathMustBeAbsolute)
 	}
 
