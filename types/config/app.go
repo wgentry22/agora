@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/errwrap"
 	"strings"
+	"time"
 )
 
 var (
@@ -14,13 +15,19 @@ var (
 	defaultAPIPort            = 8123
 	defaultLoggingLevel       = "debug"
 	defaultLoggingOutputPaths = []string{"stdout"}
+	defaultTimeoutDuration    = 5000 * time.Millisecond
 )
 
 type Application struct {
-	info    Info
-	api     API
-	logging Logging
-	db      DB
+	info      Info
+	api       API
+	logging   Logging
+	db        DB
+	heartbeat Heartbeat
+}
+
+func (a Application) Heartbeat() Heartbeat {
+	return a.heartbeat
 }
 
 func (a Application) Logging() Logging {
@@ -77,6 +84,19 @@ func (a *Application) UnmarshalTOML(data interface{}) error {
 	} else {
 		a.logging = defaultLoggingWithFields(a.info.fields())
 	}
+
+	if heartbeat, ok := dataMap["heartbeat"]; ok {
+		var heartbeatConfig Heartbeat
+		if heartbeatErr := heartbeatConfig.UnmarshalTOML(heartbeat); heartbeatErr != nil {
+			err = errwrap.Wrap(heartbeatErr, err)
+		} else {
+			a.heartbeat = heartbeatConfig
+		}
+	} else {
+		a.heartbeat = defaultHeartbeatConfig()
+	}
+
+	a.heartbeat = a.heartbeat.WithInfo(a.info)
 
 	if db, ok := dataMap["db"]; ok {
 		var dbConfig DB
@@ -161,9 +181,10 @@ func (i Info) fields() map[string]interface{} {
 }
 
 type API struct {
-	Port       int    `json:"port" yaml:"port" toml:"port"`
-	PathPrefix string `json:"pathPrefix" yaml:"pathPrefix" toml:"pathPrefix"`
-	info       *Info  `toml:"-"`
+	Port       int            `json:"port" yaml:"port" toml:"port"`
+	PathPrefix string         `json:"pathPrefix" yaml:"pathPrefix" toml:"pathPrefix"`
+	info       *Info          `toml:"-"`
+	Timeout    TimeoutOptions `toml:"timeout"`
 }
 
 func defaultAPIServer() API {
@@ -210,6 +231,17 @@ func (a *API) UnmarshalTOML(data interface{}) error {
 		a.Port = int(port)
 	} else {
 		a.Port = defaultAPIPort
+	}
+
+	if timeout, ok := dataMap["timeout"]; ok {
+		var opts TimeoutOptions
+		if err := opts.UnmarshalTOML(timeout); err != nil {
+			return err
+		}
+
+		a.Timeout = opts
+	} else {
+		a.Timeout = defaultTimeoutOptions()
 	}
 
 	return nil
@@ -338,4 +370,99 @@ func (d *DB) UnmarshalTOML(data interface{}) error {
 	}
 
 	return err
+}
+
+type TimeoutOptions struct {
+	Read  time.Duration `toml:"read"`
+	Write time.Duration `toml:"write"`
+}
+
+func defaultTimeoutOptions() TimeoutOptions {
+	return TimeoutOptions{
+		Read:  defaultTimeoutDuration,
+		Write: defaultTimeoutDuration,
+	}
+}
+
+func (t *TimeoutOptions) UnmarshalTOML(data interface{}) error {
+	dataMap := data.(map[string]interface{})
+
+	if read, ok := dataMap["read"].(int64); ok {
+		if read <= 0 {
+			read = 5000
+		}
+
+		t.Read = time.Duration(read) * time.Millisecond
+	} else {
+		t.Read = defaultTimeoutDuration
+	}
+
+	if write, ok := dataMap["write"].(int64); ok {
+		if write <= 0 {
+			write = 5000
+		}
+
+		t.Write = time.Duration(write) * time.Millisecond
+	} else {
+		t.Write = defaultTimeoutDuration
+	}
+
+	return nil
+}
+
+type Heartbeat struct {
+	PathPrefix string         `json:"pathPrefix" yaml:"pathPrefix" toml:"pathPrefix"`
+	info       *Info          `toml:"-"`
+	Timeout    TimeoutOptions `json:"timeout"`
+}
+
+func (h *Heartbeat) UnmarshalTOML(data interface{}) error {
+	dataMap := data.(map[string]interface{})
+
+	if path, ok := dataMap["pathPrefix"].(string); ok {
+		if !strings.HasPrefix(path, "/") {
+			path = fmt.Sprintf("/%s", path)
+		}
+
+		h.PathPrefix = path
+	} else {
+		h.PathPrefix = "/heartbeat"
+	}
+
+	if timeout, ok := dataMap["timeout"]; ok {
+		var opts TimeoutOptions
+		if err := opts.UnmarshalTOML(timeout); err != nil {
+			return err
+		}
+
+		h.Timeout = opts
+	} else {
+		h.Timeout = defaultTimeoutOptions()
+	}
+
+	return nil
+}
+
+func (h Heartbeat) WithInfo(info Info) Heartbeat {
+	return Heartbeat{
+		PathPrefix: h.PathPrefix,
+		info:       &info,
+		Timeout:    h.Timeout,
+	}
+}
+
+func (h Heartbeat) Info() Info {
+	if h.info == nil {
+		return defaultInfo()
+	}
+
+	return *h.info
+}
+
+func defaultHeartbeatConfig() Heartbeat {
+	return Heartbeat{
+		PathPrefix: "/heartbeat",
+		info:       nil,
+		Timeout:    defaultTimeoutOptions(),
+	}
 }

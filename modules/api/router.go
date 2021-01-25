@@ -16,6 +16,15 @@ type Router struct {
 	router *gin.Engine
 }
 
+func (r *Router) Server() *http.Server {
+	return &http.Server{
+		Addr:         r.api.ListenAddr(),
+		Handler:      r.router,
+		ReadTimeout:  r.api.Timeout.Read,
+		WriteTimeout: r.api.Timeout.Write,
+	}
+}
+
 func (r *Router) Handler() http.Handler {
 	return r.router
 }

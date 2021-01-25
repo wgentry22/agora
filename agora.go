@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/hashicorp/errwrap"
 	"github.com/wgentry22/agora/modules/api"
+	"github.com/wgentry22/agora/modules/heartbeat"
 	"github.com/wgentry22/agora/modules/logg"
 	"github.com/wgentry22/agora/modules/orm"
 	"github.com/wgentry22/agora/types/config"
@@ -59,15 +60,13 @@ func (a *Application) Setup() {
 
 	orm.UseConfig(a.conf.DB())
 	orm.UseLoggingConfig(a.conf.Logging())
+	orm.RegisterPulser()
 }
 
 func (a *Application) Start() {
-	server := &http.Server{
-		Addr:         a.conf.API().ListenAddr(),
-		Handler:      a.router.Handler(),
-		ReadTimeout:  0,
-		WriteTimeout: 0,
-	}
+	a.router.Register(heartbeat.NewHeartbeatController(a.conf.Heartbeat()))
+
+	server := a.router.Server()
 
 	signal.Notify(a.quit, syscall.SIGINT, syscall.SIGTERM)
 

@@ -1,9 +1,11 @@
 package orm
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"github.com/hashicorp/errwrap"
+	"github.com/wgentry22/agora/modules/heartbeat"
 	"github.com/wgentry22/agora/modules/logg"
 	"github.com/wgentry22/agora/types/config"
 	"sync"
@@ -78,6 +80,13 @@ func UseLoggingConfig(conf config.Logging) {
 	ormInstance.instance.Logger = logg.ForGorm(logger)
 }
 
+func RegisterPulser() {
+	m.Lock()
+	defer m.Unlock()
+
+	heartbeat.RegisterPulser(ormInstance)
+}
+
 func makeORM(db *sql.DB, conf config.DB) {
 	dialector := makeDialector(db, conf)
 	gormDB, err := gorm.Open(dialector, &gorm.Config{
@@ -114,4 +123,25 @@ func makeDialector(db *sql.DB, conf config.DB) gorm.Dialector {
 		PreferSimpleProtocol: true,
 		Conn:                 db,
 	})
+}
+
+func (o *orm) Component() string {
+	return "orm"
+}
+
+func (o *orm) Pulse(ctx context.Context, pulsec chan<- heartbeat.Pulse) {
+	m.Lock()
+	defer m.Unlock()
+
+	pulse := heartbeat.NewPulse(o.Component())
+
+	if rawDB == nil {
+		pulse.Status = heartbeat.StatusCritical
+	} else if err := rawDB.PingContext(ctx); err != nil {
+		pulse.Status = heartbeat.StatusWarn
+	} else {
+		pulse.Status = heartbeat.StatusOK
+	}
+
+	pulsec <- pulse
 }

@@ -5,6 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pelletier/go-toml"
 	"github.com/wgentry22/agora/types/config"
+	"time"
 )
 
 var _ = Describe("Parsing config.Application", func() {
@@ -61,6 +62,15 @@ env = "qa"
 [api]
 port = 9123
 pathPrefix = "prefix"
+[api.timeout]
+read = 5678
+write = 1234
+
+[heartbeat]
+pathPrefix = "/ekg"
+[heartbeat.timeout]
+read = 2345
+write = 3456
 
 [logging]
 level = "trace"
@@ -110,6 +120,18 @@ sslmode = "disable"
 			Expect(app.API()).To(Equal(config.API{
 				Port:       9123,
 				PathPrefix: "/prefix",
+				Timeout: config.TimeoutOptions{
+					Read:  5678 * time.Millisecond,
+					Write: 1234 * time.Millisecond,
+				},
+			}.WithInfo(expectedInfo)))
+
+			Expect(app.Heartbeat()).To(Equal(config.Heartbeat{
+				PathPrefix: "/ekg",
+				Timeout: config.TimeoutOptions{
+					Read:  2345 * time.Millisecond,
+					Write: 3456 * time.Millisecond,
+				},
 			}.WithInfo(expectedInfo)))
 
 			connStr := config.ConnectionString(app.DB())
