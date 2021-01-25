@@ -1,17 +1,12 @@
 package orm_test
 
 import (
-	"database/sql"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/wgentry22/agora/modules/orm"
 )
 
 var _ = Describe("PostgreSQL RawDB", func() {
-
-	var (
-		rawDB *sql.DB
-	)
 
 	Context("when config has not been used", func() {
 		It("should panic", func() {
@@ -26,7 +21,7 @@ var _ = Describe("PostgreSQL RawDB", func() {
 				}
 			}()
 
-			_ = orm.GetRaw()
+			_ = orm.Get()
 		})
 	})
 
@@ -37,10 +32,12 @@ var _ = Describe("PostgreSQL RawDB", func() {
 		})
 
 		It("should ping successfully", func() {
-			rawDB = orm.GetRaw()
-			Expect(rawDB).ToNot(BeNil())
+			orm := orm.Get()
 
-			err := rawDB.Ping()
+			raw, err := orm.DB()
+			Expect(err).To(BeNil())
+
+			err = raw.Ping()
 			Expect(err).To(BeNil())
 		})
 	})

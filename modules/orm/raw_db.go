@@ -47,7 +47,22 @@ type orm struct {
 	instance *gorm.DB
 }
 
-func GetRaw() *sql.DB {
+func Get() *gorm.DB {
+	m.Lock()
+	defer m.Unlock()
+
+	if rawDB == nil {
+		panic(ErrDBConnectionNotInitialized)
+	}
+
+	if ormInstance == nil || ormInstance.instance == nil {
+		panic(ErrORMConnectionNotInitialized)
+	}
+
+	return ormInstance.instance
+}
+
+func getRaw() *sql.DB {
 	m.Lock()
 	defer m.Unlock()
 

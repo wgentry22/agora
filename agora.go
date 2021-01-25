@@ -40,7 +40,7 @@ func (a *Application) Errors() <-chan error {
 func (a *Application) Setup() {
 	go func() {
 		if err, ok := <-a.errors; ok {
-			logger.WithError(err).Error("Received error")
+			logger.WithError(err).Panic("Unable to continue")
 		}
 	}()
 
