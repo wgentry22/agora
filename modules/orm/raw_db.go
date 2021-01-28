@@ -105,12 +105,14 @@ func RegisterPulser() {
 func makeORM(db *sql.DB, conf config.DB) {
 	dialector := makeDialector(db, conf)
 	gormDB, err := gorm.Open(dialector, &gorm.Config{
-		FullSaveAssociations: true,
-		NowFunc:              timeFunc,
-		DisableAutomaticPing: true,
-		CreateBatchSize:      25,
-		Dialector:            dialector,
-		Logger:               logg.ForGorm(logger),
+		SkipDefaultTransaction:   true,
+		FullSaveAssociations:     true,
+		Logger:                   logg.ForGorm(logger),
+		NowFunc:                  timeFunc,
+		DisableAutomaticPing:     true,
+		DisableNestedTransaction: false,
+		CreateBatchSize:          25,
+		Dialector:                dialector,
 	})
 
 	if err != nil {

@@ -37,6 +37,10 @@ func (a *Application) Errors() <-chan error {
 	return a.errors
 }
 
+func (a *Application) Logger() logg.Logger {
+	return logg.NewLogrusLogger(a.conf.Logging())
+}
+
 func (a *Application) Setup() {
 	go func() {
 		if err, ok := <-a.errors; ok {
