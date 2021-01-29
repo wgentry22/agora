@@ -67,6 +67,7 @@ var _ = Describe("HeartbeatController", func() {
 
 		AfterEach(func() {
 			heartbeat.ClearPulsers()
+			heartbeat.ClearPacers()
 			ts.Close()
 		})
 
@@ -90,9 +91,20 @@ var _ = Describe("HeartbeatController", func() {
 			Expect(response.Dependencies[0].Status).To(Equal(heartbeat.StatusOK))
 			Expect(response.Dependencies[0].Dependencies).To(HaveLen(0))
 		})
+
+		It("should serve metrics without error", func() {
+			res, err := http.Get(fmt.Sprintf("%s%s%s/metrics", ts.URL, apiConfig.PathPrefix, heartbeatConfig.PathPrefix))
+			Expect(err).To(BeNil())
+			Expect(res.StatusCode).To(Equal(http.StatusOK))
+
+			data, err := ioutil.ReadAll(res.Body)
+			Expect(err).To(BeNil())
+
+			Expect(string(data)).To(ContainSubstring("go_threads"))
+		})
 	})
 
-	Context("when serving responses", func() {
+	Context("when serving HealthCheck responses", func() {
 		It("should return 503 SERVICE UNAVAILABLE if at least one dependency returns StatusCritical", func() {
 			pulses := []heartbeat.Pulse{
 				{

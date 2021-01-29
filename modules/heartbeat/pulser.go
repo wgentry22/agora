@@ -3,10 +3,11 @@ package heartbeat
 import (
 	"context"
 	"encoding/json"
-	"github.com/gin-gonic/gin"
-	"github.com/wgentry22/agora/types/config"
 	"net/http"
 	"sync"
+
+	"github.com/gin-gonic/gin"
+	"github.com/wgentry22/agora/types/config"
 )
 
 type HealthCheckStatus int8

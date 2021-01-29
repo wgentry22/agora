@@ -3,17 +3,18 @@ package agora
 import (
 	"context"
 	"errors"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/hashicorp/errwrap"
 	"github.com/wgentry22/agora/modules/api"
 	"github.com/wgentry22/agora/modules/heartbeat"
 	"github.com/wgentry22/agora/modules/logg"
 	"github.com/wgentry22/agora/modules/orm"
 	"github.com/wgentry22/agora/types/config"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
 var (
@@ -41,6 +42,10 @@ func (a *Application) Logger() logg.Logger {
 	return logg.NewLogrusLogger(a.conf.Logging())
 }
 
+func (a *Application) Router() http.Handler {
+	return a.router.Handler()
+}
+
 func (a *Application) Setup() {
 	go func() {
 		if err, ok := <-a.errors; ok {
@@ -65,11 +70,12 @@ func (a *Application) Setup() {
 	orm.UseConfig(a.conf.DB())
 	orm.UseLoggingConfig(a.conf.Logging())
 	orm.RegisterPulser()
+	orm.RegisterPacer()
+
+	a.router.Register(heartbeat.NewHeartbeatController(a.conf.Heartbeat()))
 }
 
 func (a *Application) Start() {
-	a.router.Register(heartbeat.NewHeartbeatController(a.conf.Heartbeat()))
-
 	server := a.router.Server()
 
 	signal.Notify(a.quit, syscall.SIGINT, syscall.SIGTERM)
