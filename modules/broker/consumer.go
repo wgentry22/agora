@@ -1,8 +1,6 @@
 package broker
 
 import (
-  "sync"
-
   "github.com/wgentry22/agora/types/config"
   "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
@@ -17,7 +15,7 @@ func NewConsumer(conf config.Broker) Consumer {
   return &kafkaConsumer{
     timeout:  conf.Timeout,
     consumer: conf.NewSubscriber(),
-    handlers: sync.Map{},
+    handlers: make(map[string]EventHandler),
     errc:     make(chan error),
   }
 }
@@ -25,7 +23,7 @@ func NewConsumer(conf config.Broker) Consumer {
 type kafkaConsumer struct {
   timeout  int
   consumer *kafka.Consumer
-  handlers sync.Map
+  handlers map[string]EventHandler
   errc     chan error
 }
 
@@ -33,20 +31,21 @@ func (k *kafkaConsumer) Start() {
   go func(ec chan error) {
     run := true
 
-    logger.WithField("timeout", k.timeout).Info("Successfully started broker.Consumer")
+    logger.
+      WithField("timeout", k.timeout).
+      WithField("handlers", len(k.handlers)).
+      Info("Successfully started broker.Consumer")
 
     for run {
-
       event := k.consumer.Poll(k.timeout)
       switch e := event.(type) {
       case *kafka.Message:
         logger.
           Infof("Received message: %s", e)
-        if handler, ok := k.handlers.Load(*e.TopicPartition.Topic); ok {
-          if eventHandler, ok := handler.(EventHandler); ok {
-            if err := eventHandler(e.Value); err != nil {
-              ec <- err
-            }
+
+        if handler, ok := k.handlers[*e.TopicPartition.Topic]; ok {
+          if err := handler(e.Value); err != nil {
+            ec <- err
           }
         }
       case kafka.PartitionEOF:
@@ -55,6 +54,8 @@ func (k *kafkaConsumer) Start() {
         logger.WithError(e).Warning("Stopping consumer")
 
         run = false
+
+        ec <- e
       }
     }
 
@@ -65,7 +66,7 @@ func (k *kafkaConsumer) Start() {
 }
 
 func (k *kafkaConsumer) RegisterHandler(topic string, handler EventHandler) {
-  k.handlers.Store(&topic, handler)
+  k.handlers[topic] = handler
 }
 
 func (k *kafkaConsumer) Errors() <-chan error {
