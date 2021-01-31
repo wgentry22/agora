@@ -90,7 +90,10 @@ sslmode = "disable"
 
 [broker]
 id = "some-id"
+role = "producer"
 servers = ["localhost:1234", "localhost:2345"]
+timeout = 250
+buffer_size = 1000
 [broker.args]
 "auto.group.offset" = "smallest"
 `)
@@ -146,8 +149,11 @@ servers = ["localhost:1234", "localhost:2345"]
       Expect(expectedConnStr).To(Equal(connStr))
 
       Expect(app.Broker()).To(Equal(config.Broker{
-        ID:      "some-id",
-        Servers: []string{"localhost:1234", "localhost:2345"},
+        ID:         "some-id",
+        Servers:    []string{"localhost:1234", "localhost:2345"},
+        BufferSize: 1000,
+        Role:       config.RoleProducer,
+        Timeout:    250,
         Args: map[string]interface{}{
           "auto.group.offset": "smallest",
         },
