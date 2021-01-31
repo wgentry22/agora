@@ -3,6 +3,7 @@ module github.com/wgentry22/agora
 go 1.15
 
 require (
+	github.com/confluentinc/confluent-kafka-go v1.5.2 // indirect
 	github.com/docker/go-connections v0.4.0
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gin-gonic/gin v1.6.3
@@ -28,6 +29,7 @@ require (
 	golang.org/x/text v0.3.5 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
+	gopkg.in/confluentinc/confluent-kafka-go.v1 v1.5.2
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	gorm.io/driver/postgres v1.0.6
