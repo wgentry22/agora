@@ -33,12 +33,15 @@ func (k *kafkaConsumer) Start() {
   go func(ec chan error) {
     run := true
 
-    logger.Info("Successfully started broker.Consumer")
+    logger.WithField("timeout", k.timeout).Info("Successfully started broker.Consumer")
 
     for run {
+
       event := k.consumer.Poll(k.timeout)
       switch e := event.(type) {
       case *kafka.Message:
+        logger.
+          Infof("Received message: %s", e)
         if handler, ok := k.handlers.Load(*e.TopicPartition.Topic); ok {
           if eventHandler, ok := handler.(EventHandler); ok {
             if err := eventHandler(e.Value); err != nil {
@@ -62,7 +65,7 @@ func (k *kafkaConsumer) Start() {
 }
 
 func (k *kafkaConsumer) RegisterHandler(topic string, handler EventHandler) {
-  k.handlers.Store(topic, handler)
+  k.handlers.Store(&topic, handler)
 }
 
 func (k *kafkaConsumer) Errors() <-chan error {
