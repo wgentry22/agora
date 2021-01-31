@@ -15,6 +15,7 @@ import (
 	"github.com/wgentry22/agora/modules/logg"
 	"github.com/wgentry22/agora/modules/orm"
 	"github.com/wgentry22/agora/types/config"
+	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 var (
@@ -44,6 +45,14 @@ func (a *Application) Logger() logg.Logger {
 
 func (a *Application) Router() http.Handler {
 	return a.router.Handler()
+}
+
+func (a *Application) Consumer() *kafka.Consumer {
+	return config.NewSubscriber(a.conf.Broker())
+}
+
+func (a *Application) Producer() *kafka.Producer {
+	return config.NewPublisher(a.conf.Broker())
 }
 
 func (a *Application) Setup() {
