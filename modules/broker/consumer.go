@@ -55,6 +55,8 @@ func (k *kafkaConsumer) Start() {
       run = false
 
       k.errc <- e
+    default:
+      logger.Trace("Empty record set polled from queue")
     }
   }
 
