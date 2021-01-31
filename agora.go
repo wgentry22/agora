@@ -111,7 +111,8 @@ func (a *Application) Start() {
   }()
 
   if consumer != nil {
-    consumer.Start()
+    go consumer.Start()
+    
     go func(c broker.Consumer) {
       if err := <-c.Errors(); err != nil {
         a.errors <- err
