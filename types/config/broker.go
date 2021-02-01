@@ -12,18 +12,32 @@ import (
 type BrokerRole int8
 
 const (
-  RoleUnknown BrokerRole = iota
-  RoleProducer
-  RoleConsumer
+  BrokerRoleUnknown BrokerRole = iota
+  BrokerRoleProducer
+  BrokerRoleConsumer
+)
+
+type BrokerVendor int8
+
+const (
+  BrokerVendorUnknown BrokerVendor = iota
+  BrokerVendorKafka
 )
 
 var (
+  bvDisplay = []string{"unknown", "kafka"}
   brDisplay = []string{"unknown", "producer", "consumer"}
-  brLookup  = map[string]BrokerRole{
-    "unknown":  RoleUnknown,
-    "producer": RoleProducer,
-    "consumer": RoleConsumer,
+  bvLookup  = map[string]BrokerVendor{
+    "unknown": BrokerVendorUnknown,
+    "kafka":   BrokerVendorKafka,
   }
+  brLookup = map[string]BrokerRole{
+    "unknown":  BrokerRoleUnknown,
+    "producer": BrokerRoleProducer,
+    "consumer": BrokerRoleConsumer,
+  }
+  ErrBrokerRoleRequired      = errors.New("value for `broker.role` is expected")
+  ErrBrokerVendorRequired    = errors.New("value for `broker.vendor` is expected")
   ErrBrokerIDRequired        = errors.New("value for `broker.id` is expected")
   ErrBrokerServersRequired   = errors.New("values for `broker.servers` must be present")
   ErrFailedToSetBrokerConfig = func(key string, value interface{}) error {
@@ -35,8 +49,13 @@ func (br BrokerRole) String() string {
   return brDisplay[br]
 }
 
+func (bv BrokerVendor) String() string {
+  return bvDisplay[bv]
+}
+
 type Broker struct {
   ID         string                 `toml:"id"`
+  Vendor     BrokerVendor           `toml:"vendor"`
   Role       BrokerRole             `toml:"role"`
   Servers    []string               `toml:"servers"`
   BufferSize int                    `toml:"buffer_size"`
@@ -87,10 +106,31 @@ func (b *Broker) UnmarshalTOML(data interface{}) (err error) {
     b.Timeout = 150
   }
 
+  if role, ok := dataMap["role"].(string); ok {
+    r, ok := brLookup[role]
+    if ok {
+      b.Role = r
+    } else {
+      b.Role = BrokerRoleUnknown
+    }
+  } else {
+    err = errwrap.Wrap(ErrBrokerRoleRequired, err)
+  }
+
+  if vendor, ok := dataMap["vendor"].(string); ok {
+    if val, valOk := bvLookup[vendor]; valOk {
+      b.Vendor = val
+    } else {
+      b.Vendor = BrokerVendorUnknown
+    }
+  } else {
+    err = errwrap.Wrap(ErrBrokerVendorRequired, err)
+  }
+
   return err
 }
 
-func (b Broker) consumerConfigMap() *kafka.ConfigMap {
+func (b Broker) ForSubscriber() *kafka.ConfigMap {
   if len(b.Servers) == 0 {
     panic(ErrBrokerServersRequired)
   }
@@ -115,7 +155,7 @@ func (b Broker) consumerConfigMap() *kafka.ConfigMap {
   return confMap
 }
 
-func (b Broker) producerConfigMap() *kafka.ConfigMap {
+func (b Broker) ForPublisher() *kafka.ConfigMap {
   if len(b.Servers) == 0 {
     panic(ErrBrokerServersRequired)
   }
@@ -138,50 +178,4 @@ func (b Broker) producerConfigMap() *kafka.ConfigMap {
   }
 
   return confMap
-}
-
-func (b Broker) NewPublisher() *kafka.Producer {
-  confMap := b.producerConfigMap()
-
-  producer, err := kafka.NewProducer(confMap)
-  if err != nil {
-    panic(err)
-  }
-
-  return producer
-}
-
-func NewPublisher(conf Broker) *kafka.Producer {
-  confMap := conf.producerConfigMap()
-
-  producer, err := kafka.NewProducer(confMap)
-  if err != nil {
-    panic(err)
-  }
-
-  return producer
-}
-
-func (b Broker) NewSubscriber() *kafka.Consumer {
-  confMap := b.consumerConfigMap()
-
-  consumer, err := kafka.NewConsumer(confMap)
-
-  if err != nil {
-    panic(err)
-  }
-
-  return consumer
-}
-
-func NewSubscriber(conf Broker) *kafka.Consumer {
-  confMap := conf.consumerConfigMap()
-
-  consumer, err := kafka.NewConsumer(confMap)
-
-  if err != nil {
-    panic(err)
-  }
-
-  return consumer
 }

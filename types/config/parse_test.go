@@ -90,6 +90,7 @@ sslmode = "disable"
 
 [broker]
 id = "some-id"
+vendor = "kafka"
 role = "producer"
 servers = ["localhost:1234", "localhost:2345"]
 timeout = 250
@@ -152,7 +153,8 @@ buffer_size = 1000
         ID:         "some-id",
         Servers:    []string{"localhost:1234", "localhost:2345"},
         BufferSize: 1000,
-        Role:       config.RoleProducer,
+        Vendor:     config.BrokerVendorKafka,
+        Role:       config.BrokerRoleProducer,
         Timeout:    250,
         Args: map[string]interface{}{
           "auto.group.offset": "smallest",
