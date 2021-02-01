@@ -2,17 +2,14 @@ package broker
 
 import (
   "errors"
-  "time"
 
-  "github.com/hashicorp/errwrap"
-  "github.com/wgentry22/agora/modules/logg"
   "github.com/wgentry22/agora/types/config"
   "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 var (
+  ErrProducerConfigurationExpected = errors.New("expected configuration with broker role `producer`")
   ErrFailedToDeliverMessage = errors.New("delivery of message failed")
-  logger = logg.Root()
 )
 
 type Publisher interface {
@@ -21,10 +18,27 @@ type Publisher interface {
 }
 
 func NewPublisher(conf config.Broker) Publisher {
+  if conf.Role.String() == "producer" {
+    if conf.Vendor.String() == "kafka" {
+      return newKafkaPublisher(conf)
+    }
+
+    return nil
+  }
+
+  panic(ErrProducerConfigurationExpected)
+}
+
+func newKafkaPublisher(conf config.Broker) Publisher {
+  pub, err := kafka.NewProducer(conf.ForPublisher())
+  if err != nil {
+    panic(err)
+  }
+
   return &kafkaPublisher{
-    publisher: conf.NewPublisher(),
-    events:    make(chan kafka.Event, conf.BufferSize),
-    errors:    make(chan error),
+    publisher: pub,
+    events:    make(chan kafka.Event),
+    errors:    make(chan error, 1),
   }
 }
 
@@ -35,38 +49,11 @@ type kafkaPublisher struct {
 }
 
 func (k *kafkaPublisher) Publish(event Event) {
-  if err := k.publisher.Produce(&kafka.Message{
-    TopicPartition: kafka.TopicPartition{ //nolint:exhaustivestruct
-      Topic:     event.Topic(),
-      Partition: kafka.PartitionAny,
-    },
-    Value:         event.Payload(),
-    Key:           event.Kind(),
-    Timestamp:     time.Now(),
-    TimestampType: 0,
-    Opaque:        nil,
-    Headers:       nil,
-  }, k.events); err != nil {
-    logger.
-      WithError(err).
-      Warning("Failed to produce message")
-
-    k.errors <- err
+  if event == nil {
+    panic(errors.New("cannot publish nil event"))
   }
 
-  go func(ec chan kafka.Event) {
-    e := <-ec
-    if msg, ok := e.(*kafka.Message); ok {
-      if msg.TopicPartition.Error != nil {
-        k.errors <- errwrap.Wrap(ErrFailedToDeliverMessage, msg.TopicPartition.Error)
-      } else {
-        logger.
-          WithField("topic", *msg.TopicPartition.Topic).
-          WithField("delivered", msg.Timestamp).
-          Debug("Message sent successfully")
-      }
-    }
-  }(k.events)
+  panic(event)
 }
 
 func (k *kafkaPublisher) Errors() <-chan error {

@@ -85,9 +85,9 @@ func (a *Application) Setup() {
 
   a.router.Register(heartbeat.NewHeartbeatController(a.conf.Heartbeat()))
 
-  if a.conf.Broker().Role == config.RoleProducer {
+  if a.conf.Broker().Role == config.BrokerRoleProducer {
     publisher = broker.NewPublisher(a.conf.Broker())
-  } else if a.conf.Broker().Role == config.RoleConsumer {
+  } else if a.conf.Broker().Role == config.BrokerRoleConsumer {
     consumer = broker.NewConsumer(a.conf.Broker())
   }
 }
@@ -111,20 +111,21 @@ func (a *Application) Start() {
   }()
 
   if consumer != nil {
-    consumer.Start()
-    go func(c broker.Consumer) {
+    go consumer.Start()
+
+    go func(c broker.Consumer, ec chan error) {
       if err := <-c.Errors(); err != nil {
-        a.errors <- err
+        ec <- err
       }
-    }(consumer)
+    }(consumer, a.errors)
   }
 
   if publisher != nil {
-    go func(p broker.Publisher) {
+    go func(p broker.Publisher, ec chan error) {
       if err := <-p.Errors(); err != nil {
-        a.errors <- err
+        ec <- err
       }
-    }(publisher)
+    }(publisher, a.errors)
   }
 
   <-a.quit

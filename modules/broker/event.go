@@ -1,5 +1,9 @@
 package broker
 
+import (
+  "fmt"
+)
+
 type Event interface {
   Topic() *string
   Kind() []byte
@@ -49,7 +53,12 @@ func (s *simpleEvent) Build() Event {
 }
 
 func NewEventBuilder(topic string) EventBuilder {
+  var t = &topic
   return &simpleEvent{
-    topic: &topic,
+    topic: t,
   }
+}
+
+func (s *simpleEvent) String() string {
+  return fmt.Sprintf("Event[Topic: %s, Payload: %s, Kind: %s]", *s.topic, string(s.payload), string(s.kind))
 }
