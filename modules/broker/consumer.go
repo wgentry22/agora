@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/hashicorp/errwrap"
 	"github.com/wgentry22/agora/types/config"
 	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
@@ -53,6 +54,16 @@ type kafkaConsumer struct {
 
 func (k *kafkaConsumer) Start() {
 	run := true
+
+	topics := make([]string, 0)
+	k.handlers.Range(func(k, v interface{}) bool {
+		topics = append(topics, k.(string))
+		return true
+	})
+
+	if err := k.consumer.SubscribeTopics(topics, nil); err != nil {
+		panic(errwrap.Wrap(errors.New("failed to subscribe to topics"), err))
+	}
 
 	for run {
 		event := k.consumer.Poll(k.timeout)
