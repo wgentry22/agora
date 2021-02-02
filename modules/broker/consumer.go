@@ -56,6 +56,7 @@ func (k *kafkaConsumer) Start() {
 	run := true
 
 	topics := make([]string, 0)
+	
 	k.handlers.Range(func(k, v interface{}) bool {
 		topics = append(topics, k.(string))
 		return true

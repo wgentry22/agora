@@ -6,14 +6,20 @@ import (
 
 type Event interface {
 	Topic() *string
-	Kind() []byte
+	Key() []byte
 	Payload() []byte
+}
+
+func EventFactory(topic string) func(key, payload []byte) Event {
+	return func(key, payload []byte) Event {
+		return NewEventBuilder(topic).WithKey(key).WithPayload(payload).Build()
+	}
 }
 
 type EventHandler func([]byte) error
 
 type EventBuilder interface {
-	WithKind([]byte) EventBuilder
+	WithKey([]byte) EventBuilder
 	WithPayload([]byte) EventBuilder
 	Build() Event
 }
@@ -28,7 +34,7 @@ func (s *simpleEvent) Topic() *string {
 	return s.topic
 }
 
-func (s *simpleEvent) Kind() []byte {
+func (s *simpleEvent) Key() []byte {
 	return s.kind
 }
 
@@ -36,7 +42,7 @@ func (s *simpleEvent) Payload() []byte {
 	return s.payload
 }
 
-func (s *simpleEvent) WithKind(data []byte) EventBuilder {
+func (s *simpleEvent) WithKey(data []byte) EventBuilder {
 	s.kind = data
 
 	return s
@@ -54,11 +60,12 @@ func (s *simpleEvent) Build() Event {
 
 func NewEventBuilder(topic string) EventBuilder {
 	var t = &topic
+
 	return &simpleEvent{
 		topic: t,
 	}
 }
 
 func (s *simpleEvent) String() string {
-	return fmt.Sprintf("Event[Topic: %s, Payload: %s, Kind: %s]", *s.topic, string(s.payload), string(s.kind))
+	return fmt.Sprintf("Event[Topic: %s, Payload: %s, Key: %s]", *s.topic, string(s.payload), string(s.kind))
 }
