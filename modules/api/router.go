@@ -1,117 +1,148 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/wgentry22/agora/types/config"
-	"net/http"
-	"sync"
+  "github.com/gin-gonic/gin"
+  "github.com/wgentry22/agora/types/config"
+  "net/http"
+  "sync"
 )
 
 var (
-	m sync.Mutex
+  m sync.Mutex
 )
 
 type Router struct {
-	api    config.API
-	router *gin.Engine
+  api    config.API
+  router *gin.Engine
 }
 
 func (r *Router) Server() *http.Server {
-	return &http.Server{
-		Addr:         r.api.ListenAddr(),
-		Handler:      r.router,
-		ReadTimeout:  r.api.Timeout.Read,
-		WriteTimeout: r.api.Timeout.Write,
-	}
+  return &http.Server{
+    Addr:         r.api.ListenAddr(),
+    Handler:      r.router,
+    ReadTimeout:  r.api.Timeout.Read,
+    WriteTimeout: r.api.Timeout.Write,
+  }
 }
 
 func (r *Router) Handler() http.Handler {
-	return r.router
+  return r.router
 }
 
 type Controller struct {
-	uri    string
-	routes []Route
+  uri    string
+  routes []Route
 }
 
 type Route struct {
-	handler func(ctx *gin.Context)
-	subPath string
-	method  string
+  handler    func(ctx *gin.Context)
+  subPath    string
+  method     string
+  middleware func(ctx *gin.Context)
 }
 
 func NewRouter(config config.API) Router {
-	router := &Router{
-		api:    config,
-		router: gin.Default(),
-	}
+  router := &Router{
+    api:    config,
+    router: gin.Default(),
+  }
 
-	infoController := NewInfoController(config.Info())
+  infoController := NewInfoController(config.Info())
 
-	router.Register(infoController)
+  router.Register(infoController)
 
-	return *router
+  return *router
 }
 
 func NewController(uri string) Controller {
-	return Controller{uri, make([]Route, 0)}
+  return Controller{uri, make([]Route, 0)}
 }
 
 func (r *Router) Register(controller Controller) {
-	m.Lock()
-	defer m.Unlock()
+  m.Lock()
+  defer m.Unlock()
 
-	rg := r.routerGroup().Group(controller.uri)
+  rg := r.routerGroup().Group(controller.uri)
 
-	for _, route := range controller.routes {
-		rg.Handle(route.method, route.subPath, route.handler)
-	}
+  for _, route := range controller.routes {
+    if route.middleware != nil {
+      rg.Handle(route.method, route.subPath, route.handler).Use(route.middleware)
+    } else {
+      rg.Handle(route.method, route.subPath, route.handler)
+    }
+  }
+}
+
+func (r *Router) RegisterWithMiddleware(controller Controller, middleware func(ctx *gin.Context)) {
+  m.Lock()
+  defer m.Unlock()
+
+  rg := r.routerGroup().Group(controller.uri).Use(middleware)
+
+  for _, route := range controller.routes {
+    if route.middleware != nil {
+      rg.Handle(route.method, route.subPath, route.handler).Use(route.middleware)
+    } else {
+      rg.Handle(route.method, route.subPath, route.handler)
+    }
+  }
 }
 
 func (r *Router) routerGroup() *gin.RouterGroup {
-	return r.router.Group(r.api.PathPrefix)
+  return r.router.Group(r.api.PathPrefix)
 }
 
 func (c *Controller) Register(route Route) {
-	c.routes = append(c.routes, route)
+  c.routes = append(c.routes, route)
+}
+
+func (c *Controller) RegisterWithMiddleware(route Route, middleware func(ctx *gin.Context)) {
+  withMiddleware := Route{
+    handler: route.handler,
+    subPath: route.subPath,
+    method:  route.method,
+    middleware: middleware,
+  }
+
+  c.routes = append(c.routes, withMiddleware)
 }
 
 func NewGETRoute(uri string, handler func(c *gin.Context)) Route {
-	return newRoute(http.MethodGet, uri, handler)
+  return newRoute(http.MethodGet, uri, handler)
 }
 
 func NewPOSTRoute(uri string, handler func(c *gin.Context)) Route {
-	return newRoute(http.MethodPost, uri, handler)
+  return newRoute(http.MethodPost, uri, handler)
 }
 
 func NewPUTRoute(uri string, handler func(c *gin.Context)) Route {
-	return newRoute(http.MethodPut, uri, handler)
+  return newRoute(http.MethodPut, uri, handler)
 }
 
 func NewPATCHRoute(uri string, handler func(c *gin.Context)) Route {
-	return newRoute(http.MethodPatch, uri, handler)
+  return newRoute(http.MethodPatch, uri, handler)
 }
 
 func NewDELETERoute(uri string, handler func(c *gin.Context)) Route {
-	return newRoute(http.MethodDelete, uri, handler)
+  return newRoute(http.MethodDelete, uri, handler)
 }
 
 func newRoute(method, uri string, handler func(c *gin.Context)) Route {
-	return Route{
-		handler: handler,
-		subPath: uri,
-		method:  method,
-	}
+  return Route{
+    handler: handler,
+    subPath: uri,
+    method:  method,
+  }
 }
 
 func NewInfoController(info config.Info) Controller {
-	versionHandler := func(c *gin.Context) {
-		c.JSON(http.StatusOK, map[string]string{"version": info.Version.String()})
-	}
+  versionHandler := func(c *gin.Context) {
+    c.JSON(http.StatusOK, map[string]string{"version": info.Version.String()})
+  }
 
-	infoController := NewController("/info")
+  infoController := NewController("/info")
 
-	infoController.Register(NewGETRoute("/version", versionHandler))
+  infoController.Register(NewGETRoute("/version", versionHandler))
 
-	return infoController
+  return infoController
 }
