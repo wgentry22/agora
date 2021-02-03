@@ -65,6 +65,12 @@ pathPrefix = "prefix"
 [api.timeout]
 read = 5678
 write = 1234
+[api.cors]
+allow-origins = ["http://localhost:1234"]
+allow-methods = ["GET","PUT","POST","PATCH","DELETE"]
+allow-headers = ["Access-Control-Allow-Origin"]
+expose-headers = ["Access-Control-Allow-Origin"]
+allow-credentials = true
 
 [heartbeat]
 pathPrefix = "/ekg"
@@ -133,6 +139,13 @@ buffer_size = 1000
 				Timeout: config.TimeoutOptions{
 					Read:  5678 * time.Millisecond,
 					Write: 1234 * time.Millisecond,
+				},
+				Cors: config.CORS{
+					AllowOrigins:     []string{"http://localhost:1234"},
+					AllowMethods:     []string{"GET", "PUT", "POST", "PATCH", "DELETE"},
+					AllowHeaders:     []string{"Access-Control-Allow-Origin"},
+					ExposeHeaders:    []string{"Access-Control-Allow-Origin"},
+					AllowCredentials: true,
 				},
 			}.WithInfo(expectedInfo)))
 

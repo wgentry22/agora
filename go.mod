@@ -8,8 +8,9 @@ require (
 	github.com/confluentinc/confluent-kafka-go v1.5.2 // indirect
 	github.com/docker/go-connections v0.4.0
 	github.com/fsnotify/fsnotify v1.4.9
+	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.6.3
-	github.com/go-playground/validator/v10 v10.4.1 // indirect
+	github.com/go-playground/validator/v10 v10.4.1
 	github.com/googleapis/gax-go v1.0.3 // indirect
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/jackc/pgproto3/v2 v2.0.7 // indirect

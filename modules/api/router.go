@@ -1,10 +1,12 @@
 package api
 
 import (
-  "github.com/gin-gonic/gin"
-  "github.com/wgentry22/agora/types/config"
   "net/http"
   "sync"
+
+  "github.com/gin-contrib/cors"
+  "github.com/gin-gonic/gin"
+  "github.com/wgentry22/agora/types/config"
 )
 
 var (
@@ -42,9 +44,15 @@ type Route struct {
 }
 
 func NewRouter(config config.API) Router {
+  r := gin.Default()
+
+  if config.ShouldRegisterCors() {
+    r.Use(cors.New(config.Cors.ToGinConfig()))
+  }
+
   router := &Router{
     api:    config,
-    router: gin.Default(),
+    router: r,
   }
 
   infoController := NewInfoController(config.Info())
@@ -81,7 +89,7 @@ func (r *Router) RegisterWithMiddleware(controller Controller, middleware func(c
 
   for _, route := range controller.routes {
     if route.middleware != nil {
-      rg.Handle(route.method, route.subPath, route.handler).Use(route.middleware)
+      rg.Handle(route.method, route.subPath, route.middleware, route.handler)
     } else {
       rg.Handle(route.method, route.subPath, route.handler)
     }

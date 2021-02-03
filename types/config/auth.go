@@ -8,15 +8,17 @@ type AuthVendor int8
 
 const (
   AuthVendorUnknown AuthVendor = iota
+  AuthVendorMock
   AuthVendorFirebase
 )
 
 var (
   ErrAuthVendorRequired = errors.New("value for `auth.vendor` is expected")
   ErrUnknownAuthVendor  = errors.New("unknown auth vendor")
-  authVendorDisplay     = []string{"unknown", "firebase"}
+  authVendorDisplay     = []string{"unknown", "mock", "firebase"}
   authVendorLookup      = map[string]AuthVendor{
     "unknown":  AuthVendorUnknown,
+    "mock":     AuthVendorMock,
     "firebase": AuthVendorFirebase,
   }
 )

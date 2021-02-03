@@ -64,7 +64,7 @@ func firebaseTokenValidatorFromEnv() TokenValidator {
 func (f *FirebaseTokenValidator) Validate(r *http.Request) (string, error) {
   header := r.Header.Get("Authorization")
   if header == "" || !strings.HasPrefix(header, "Bearer ") {
-    return "", errors.New("authorization header missing")
+    return "", ErrAuthorizationHeaderRequired
   }
 
   jwt := strings.ReplaceAll(header, "Bearer ", "")

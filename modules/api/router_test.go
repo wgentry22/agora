@@ -30,6 +30,37 @@ var _ = Describe("Router", func() {
 		ts.Close()
 	})
 
+	Context("when CORS Configuration is present", func() {
+
+		It("should apply CORS headers appropriately", func() {
+			router = api.NewRouter(config.API{
+				Port:       8123,
+				PathPrefix: "/api",
+				Cors: config.CORS{
+					AllowOrigins: []string{"http://localhost:1234"},
+					AllowMethods: []string{"GET", "PUT", "POST", "PATCH", "DELETE"},
+					AllowHeaders: []string{"Origin", "Access-Control-Allow-Origin", "Access-Control-Allow-Methods", "Access-Control-Allow-Headers", "Access-Control-Expose-Headers"},
+					ExposeHeaders: []string{"Access-Control-Allow-Origin"},
+				},
+			})
+
+			router.Register(controller)
+
+			ts = httptest.NewServer(router.Handler())
+
+			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/test%s", ts.URL, "/"), nil)
+			Expect(err).To(BeNil())
+			req.Header.Set("Origin", "http://localhost:1234")
+
+			res, err := http.DefaultClient.Do(req)
+			Expect(err).To(BeNil())
+
+			Expect(res.StatusCode).To(Equal(http.StatusCreated))
+			Expect(res.Header.Get("Access-Control-Allow-Origin")).To(Equal("http://localhost:1234"))
+			Expect(res.Header.Get("Access-Control-Expose-Headers")).To(Equal("Access-Control-Allow-Origin"))
+		})
+	})
+
 	Context("without any registered controllers", func() {
 		It("should serve the /info endpoint", func() {
 			ts = httptest.NewServer(router.Handler())
